@@ -1,27 +1,3 @@
-
-"""
-News Aggregator CLI - single-file implementation.
-
-Requirements:
-    pip install requests beautifulsoup4 pandas openpyxl python-dateutil
-
-Usage examples:
-    # Fetch latest from NewsAPI (requires NEWSAPI_KEY env var) or fallback scrapers:
-    python news_aggregator.py fetch --source all --limit 50
-
-    # View stored articles (filters available)
-    python news_aggregator.py view --keyword cloud --start 2025-01-01 --end 2025-11-13
-
-    # Export to excel
-    python news_aggregator.py export --format excel --out news.xlsx
-
-    # Run dedup (removes duplicates by url/title)
-    python news_aggregator.py dedupe
-
-    # List known scraping sources
-    python news_aggregator.py list-sources
-"""
-
 import os
 import sys
 import argparse
@@ -45,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 DB_PATH = "news.db"
 
-# === Database helpers ===
+# Database helpers 
 def init_db(conn):
     c = conn.cursor()
     c.execute("""
@@ -68,13 +44,13 @@ def insert_article(conn, article):
     Deduplicate by URL first, then title.
     """
     c = conn.cursor()
-    # quick dedupe by URL
+    
     if article.get("url"):
         c.execute("SELECT id FROM articles WHERE url = ?", (article["url"],))
         if c.fetchone():
             logging.debug("Duplicate url skipped: %s", article["url"])
             return False
-    # dedupe by title
+    #
     c.execute("SELECT id FROM articles WHERE title = ?", (article["title"],))
     if c.fetchone():
         logging.debug("Duplicate title skipped: %s", article["title"])
@@ -95,7 +71,7 @@ def insert_article(conn, article):
     logging.debug("Inserted: %s", article.get("title"))
     return True
 
-# === NewsAPI fetcher ===
+# NewsAPI fetcher
 def fetch_from_newsapi(api_key, q=None, sources=None, page_size=20, max_pages=1):
     logging.info("Fetching from NewsAPI...")
     base = "https://newsapi.org/v2/top-headlines"
@@ -125,7 +101,7 @@ def fetch_from_newsapi(api_key, q=None, sources=None, page_size=20, max_pages=1)
     logging.info("NewsAPI fetched %d articles", len(results))
     return results
 
-# === Simple scrapers (fallback) ===
+# Simple scrapers (fallback) 
 def scrape_bbc(limit=20):
     logging.info("Scraping BBC front page...")
     url = "https://www.bbc.com"
@@ -137,7 +113,7 @@ def scrape_bbc(limit=20):
         return []
     soup = BeautifulSoup(r.text, "html.parser")
     items = []
-    # BBC uses many classes; try common patterns: h3 titles with links
+    
     for h in soup.select("a[href] h3")[:limit*3]:
         title = h.get_text(strip=True)
         a = h.find_parent("a")
@@ -176,7 +152,7 @@ def scrape_cnn(limit=20):
     logging.info("CNN scraped %d items", len(items))
     return items
 
-# === Query and export functions ===
+# Query and export functions 
 def query_articles(conn, source=None, keyword=None, start_date=None, end_date=None, limit=100):
     c = conn.cursor()
     q = "SELECT id, title, url, source, published_at, summary, fetched_at FROM articles WHERE 1=1"
@@ -249,18 +225,18 @@ def dedupe_db(conn):
     conn.commit()
     logging.info("Deduplication complete.")
 
-# === Helpers ===
+# Helpers 
 def parse_date(s):
     if not s:
         return None
     try:
         dt = dateparser.parse(s)
-        # return ISO-like string for comparisons
+        
         return dt.isoformat()
     except Exception:
         return None
 
-# === CLI main ===
+#CLI main
 def main():
     parser = argparse.ArgumentParser(description="News Aggregator CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -290,7 +266,7 @@ def main():
     pexport.add_argument("--start", default=None)
     pexport.add_argument("--end", default=None)
 
-    # dedupe
+    
     pdup = sub.add_parser("dedupe", help="Run DB deduplication")
 
     # list sources
@@ -390,3 +366,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
